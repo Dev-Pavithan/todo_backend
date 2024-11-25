@@ -1,63 +1,101 @@
+require('dotenv').config(); // Import dotenv to manage environment variables
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const TodoModel = require('./models/Todo');
 
 const app = express();
+
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect('mongodb+srv://pavithanunenthiran29:ToDoApp@todoapp.fwi4c.mongodb.net/',
-    console.log('MongoDB connected')
-)
+// MongoDB Connection
+mongoose
+  .connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log('MongoDB connected'))
+  .catch((err) => console.error('MongoDB connection error:', err));
 
-app.listen(5000,
-    console.log('Server listening on port: 5000')
-)
+// Start Server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server listening on port: ${PORT}`));
 
-app.post('/add', (req, res) => {
+// Routes
+// Add a task
+app.post('/add', async (req, res) => {
   const { task } = req.body;
-  TodoModel.create({ task })
-      .then(result => res.json(result))
-      .catch(err => console.log(err));
-   
-});
-
-app.get('/get',(req,res)=>{
-  TodoModel.find()
-  .then(result=> res.json(result))
-  .catch(err=>console.log(err));
-});
-  
-app.put('/edit/:id',(req,res)=>{
-  const{id} = req.params;
-  TodoModel.findByIdAndUpdate(id,{done:true},{new:true})
-  .then(result=> res.json(result))
-  .catch(err=>res.json(err));
- });
-
-app.put('/update/:id',(req,res)=>{
-  const{id} = req.params;
-  const{task} = req.body;
-  TodoModel.findByIdAndUpdate(id,{task:task})
-  .then(result=> res.json(result))
-  .catch(err=>res.json(err));
- });
-
-app.delete('/delete/:id',(req,res)=>{
-  const{id} = req.params;
-  TodoModel.findByIdAndDelete({_id:id})
-  .then(result=> res.json(result))
-  .catch(err=>res.json(err));
- }); 
- app.get('/test', async (req, res) => {
   try {
-    const users = await User.find();
-    // res.status(200).json(users);
-    res.send('<h1>TEST  Successfully</h1>')
+    const newTask = await TodoModel.create({ task });
+    res.status(201).json(newTask);
   } catch (error) {
-    console.error('Error fetching users:', error);
-    res.status(500).json({ error: 'Server error. Please try again later.' });
+    console.error('Error creating task:', error);
+    res.status(500).json({ error: 'Failed to add task' });
   }
 });
-module.exports=app;
+
+// Get all tasks
+app.get('/get', async (req, res) => {
+  try {
+    const tasks = await TodoModel.find();
+    res.status(200).json(tasks);
+  } catch (error) {
+    console.error('Error fetching tasks:', error);
+    res.status(500).json({ error: 'Failed to fetch tasks' });
+  }
+});
+
+// Mark a task as done
+app.put('/edit/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const updatedTask = await TodoModel.findByIdAndUpdate(
+      id,
+      { done: true },
+      { new: true }
+    );
+    res.status(200).json(updatedTask);
+  } catch (error) {
+    console.error('Error marking task as done:', error);
+    res.status(500).json({ error: 'Failed to mark task as done' });
+  }
+});
+
+// Update a task
+app.put('/update/:id', async (req, res) => {
+  const { id } = req.params;
+  const { task } = req.body;
+  try {
+    const updatedTask = await TodoModel.findByIdAndUpdate(
+      id,
+      { task },
+      { new: true }
+    );
+    res.status(200).json(updatedTask);
+  } catch (error) {
+    console.error('Error updating task:', error);
+    res.status(500).json({ error: 'Failed to update task' });
+  }
+});
+
+// Delete a task
+app.delete('/delete/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const deletedTask = await TodoModel.findByIdAndDelete(id);
+    res.status(200).json(deletedTask);
+  } catch (error) {
+    console.error('Error deleting task:', error);
+    res.status(500).json({ error: 'Failed to delete task' });
+  }
+});
+
+// Test Route
+app.get('/test', (req, res) => {
+  res.send('<h1>Test Successful</h1>');
+});
+
+// Export the app for Vercel
+module.exports = app;
